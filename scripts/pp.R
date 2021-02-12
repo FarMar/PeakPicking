@@ -128,12 +128,12 @@ ggplot(merged, aes(x=time, y=signal)) +
 #### individual curve area calculation ####
 trim <- merged %>% slice(4581:4720)
 
-ggplot(trim, aes(x=time, y=signal)) +
+ggplot(trima, aes(x=time, y=signal)) +
   geom_col(orientation="x", colour = "grey", fill = "grey") +
   geom_line(aes(x=time, y=y.smooth))+
   geom_point(aes(x=time, y=X1), colour = "red", size = 6)
 
-AUC(trim$n, trim$signal, method = "spline")
+AUC(trima$n, trima$y.smooth, method = "spline")
 
 
 #### Glue it all together ####
@@ -143,4 +143,19 @@ AUC(trim$n, trim$signal, method = "spline")
 # Once done that, need to apply the AUC function to each df, probably using `map` and have it output a vector
 # That vector then needs to be bound to the `peaks_sort` df, and saved as a .csv
 
+#slice.peaks = function(target, x, y) {
+#  slice([target$X3]:[target$X4])
+#}
+
+
+# Manually, this works. Having sliced the keying df to one row, we then apply the numbers on columns X3 and X4 to slice
+# the trace df
+
+# Looks like the step to preceed this then is to slice the key df, in a function, and push the output of `slice(peaks_sorta$X3:peaks_sorta$X4)`
+# to new dfs named by the function
+
+# We'd then write another function that punts that list of dfs into the AUC command
+peaks_sorta <- peaks_sort %>% slice(1)
+
+trima <- merged %>% slice(peaks_sorta$X3:peaks_sorta$X4)
 
