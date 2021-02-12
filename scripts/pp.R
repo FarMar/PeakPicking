@@ -12,6 +12,7 @@ setwd("/Users/markfarrell/OneDrive - CSIRO/Data/PeakPicking")
 
 #### Install packages as needed ####
 install.packages("zoo")
+install.packages("DescTools")
 
 
 #### Load packages ####
@@ -20,19 +21,28 @@ library(tidyverse)
 library(janitor)
 library(zoo)
 library(pracma)
+library(DescTools)
 
-pks1    = result[,1]#### import data ####
+#### import data ####
 n_raw <- read_csv("data/tn.csv")
 plot(n_raw, col = 'Gray', type = 'l')
-x <- n_raw$time
-y <- n_raw$signal
 
 
 #### smooth ####
+n_raw$y.smooth <- loess(n_raw$signal ~ n_raw$time, span=0.005)$fitted
+plot(n_raw$time, n_raw$y.smooth, type = 'l')
+
+
+
+#x <- n_raw$time
+#y <- n_raw$signal
+
+
+#### old smooth ####
 # https://rpubs.com/mengxu/peak_detection?fbclid=IwAR0t8Ni1SvEi86m5yeZL9aQhPE_FxRnR6kFMYVsKX6zQXt3xHVG66g9iPkE
 #local regression
-y.smooth <- loess(y ~ x, span=0.008)$fitted
-plot(x, y.smooth, type = 'l')
+n_raw$y.smooth <- loess(n_raw$signal ~ n_raw$time, span=0.008)$fitted
+plot(n_raw$time, n_raw$y.smooth, type = 'l')
 
 #resampling
 w=30
@@ -80,22 +90,36 @@ test(100, 0.008)
 #so the above identifies peaks well, but not obvious how to output them or integrate their areas. Onwards...
 
 #### go pracma ####
+#Uses {pracma::findpeaks} to identify peaks
 
-peaks <- data.frame(findpeaks(y.smooth, npeaks=22, threshold=0, peakpat = "[+]{1,}[0]*[-]{1,}", sortstr=TRUE)) #IDs peaks and makes a df that has
-#                                                                                                               # X1 = height at point of picking
-#                                                                                                               # X2 = time at point of picking
-#                                                                                                               # X3 = time at start of peak
-#                                                                                                               # X4 = time at end of peak
+peaks <- data.frame(findpeaks(n_raw$y.smooth, 
+                              npeaks=23, 
+                              threshold=0, 
+                              peakpat = "[+]{1,}[0]*[-]{1,}", 
+                              sortstr=TRUE)) #IDs peaks and makes a df that has
+#                                            # X1 = height at point of picking
+#                                            # X2 = time at point of picking
+#                                            # X3 = time at start of peak
+#                                            # X4 = time at end of peak
 
-n_raw$n <- seq(1,length(y.smooth))
-n_raw <- merge(x=n_raw, y=peaks, by.x="n", by.y="X2", all.x=TRUE, all.y=TRUE)
+n_raw$n <- seq(1,length(n_raw$y.smooth))
+merged <- merge(x=n_raw, 
+               y=peaks, 
+               by.x="n", 
+               by.y="X2", 
+               all.x=TRUE, 
+               all.y=TRUE)
 
-ggplot(n_raw, aes(x=time, y=signal)) +
-  geom_col(orientation="x") +
+ggplot(merged, aes(x=time, y=signal)) +
+  geom_col(orientation="x", colour = "grey") +
+  geom_line(aes(x=time, y=y.smooth))+
   geom_point(aes(x=time, y=X1), colour = "red")
 
-trim <- n_raw %>% slice(4500:4800)
+trim <- merged %>% slice(4581:4720)
 
 ggplot(trim, aes(x=time, y=signal)) +
-  geom_col(orientation="x") +
-  geom_point(aes(x=time, y=X1), colour = "red")
+  geom_col(orientation="x", colour = "grey", fill = "grey") +
+  geom_line(aes(x=time, y=y.smooth))+
+  geom_point(aes(x=time, y=X1), colour = "red", size = 6)
+
+AUC(trim$n, trim$signal, method = "spline")
