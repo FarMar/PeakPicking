@@ -103,8 +103,17 @@ peaks <- data.frame(findpeaks(n_raw$y.smooth,
 #                                            # X4 = time at end of peak
 
 n_raw$n <- seq(1,length(n_raw$y.smooth))
+
+# sort peaks df
+peaks_sort <- peaks %>% 
+  arrange(X2)
+
+#generate peak number vector and combine with sorted peaks df
+peak_no <- 1:23
+peaks_sort <- cbind(peak_no, peaks_sort)
+
 merged <- merge(x=n_raw, 
-               y=peaks, 
+               y=peaks_sort, 
                by.x="n", 
                by.y="X2", 
                all.x=TRUE, 
@@ -115,6 +124,8 @@ ggplot(merged, aes(x=time, y=signal)) +
   geom_line(aes(x=time, y=y.smooth))+
   geom_point(aes(x=time, y=X1), colour = "red")
 
+
+#### individual curve area calculation ####
 trim <- merged %>% slice(4581:4720)
 
 ggplot(trim, aes(x=time, y=signal)) +
@@ -123,3 +134,13 @@ ggplot(trim, aes(x=time, y=signal)) +
   geom_point(aes(x=time, y=X1), colour = "red", size = 6)
 
 AUC(trim$n, trim$signal, method = "spline")
+
+
+#### Glue it all together ####
+
+# Have 2 dfs: one containing the whole trace and also the 23 rows defining the peak, and one with just the peak definitions
+# need to work out how to chop the long df into 23 dfs based upon their start (X3) and end (X4) values, +/- 10 secs
+# Once done that, need to apply the AUC function to each df, probably using `map` and have it output a vector
+# That vector then needs to be bound to the `peaks_sort` df, and saved as a .csv
+
+

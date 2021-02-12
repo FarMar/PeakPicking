@@ -47,10 +47,24 @@ Once that's done, we need to add an index column to merge on:
 ``` 
 n_raw$n <- seq(1,length(y.smooth))
 ```
-Once that's done, we merge the two together
+
+After this, we need to number the peaks. We do this by sorting based upon time, then creating a vector with numbers min - max, then `cbind`ing the two. 
+
+```
+peaks_sort <- peaks %>% arrange(X2)
+```
+
+```
+peak_no <- 1:23
+peaks_sort <- cbind(peak_no, peaks_sort)
+```
+
+We can then merge the peaks df with the raw df.
+
+
 ```
 merged <- merge(x=n_raw, 
-               y=peaks, 
+               y=peaks_sort, 
                by.x="n", 
                by.y="X2", 
                all.x=TRUE, 
