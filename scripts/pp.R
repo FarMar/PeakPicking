@@ -19,8 +19,9 @@ install.packages("zoo")
 library(tidyverse)
 library(janitor)
 library(zoo)
+library(pracma)
 
-#### import data ####
+pks1    = result[,1]#### import data ####
 n_raw <- read_csv("data/tn.csv")
 plot(n_raw, col = 'Gray', type = 'l')
 x <- n_raw$time
@@ -76,3 +77,25 @@ test <- function(w, span) {
 
 test(100, 0.008)
 
+#so the above identifies peaks well, but not obvious how to output them or integrate their areas. Onwards...
+
+#### go pracma ####
+
+peaks <- data.frame(findpeaks(y.smooth, npeaks=22, threshold=0, peakpat = "[+]{1,}[0]*[-]{1,}", sortstr=TRUE)) #IDs peaks and makes a df that has
+#                                                                                                               # X1 = height at point of picking
+#                                                                                                               # X2 = time at point of picking
+#                                                                                                               # X3 = time at start of peak
+#                                                                                                               # X4 = time at end of peak
+
+n_raw$n <- seq(1,length(y.smooth))
+n_raw <- merge(x=n_raw, y=peaks, by.x="n", by.y="X2", all.x=TRUE, all.y=TRUE)
+
+ggplot(n_raw, aes(x=time, y=signal)) +
+  geom_col(orientation="x") +
+  geom_point(aes(x=time, y=X1), colour = "red")
+
+trim <- n_raw %>% slice(4500:4800)
+
+ggplot(trim, aes(x=time, y=signal)) +
+  geom_col(orientation="x") +
+  geom_point(aes(x=time, y=X1), colour = "red")
