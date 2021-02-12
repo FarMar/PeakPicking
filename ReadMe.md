@@ -14,6 +14,7 @@ The purpose of this exercise is to take a manually extracted `xy` trace from the
 ## Methods
 ### Importing data
 Data can be simply imported using `read_csv`, assuming initial Excel fiddling has been done to provide a clean two-colun `.csv` file with headers. Once imported, it's worth plotting to see that everything is OK, e.g. `plot(n_raw, col = 'Gray', type = 'l')`
+
 ![](outputs/raw_plot.png)
 
 ### Smoothing data
