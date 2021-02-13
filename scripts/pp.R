@@ -4,6 +4,8 @@
 
 #### mark.farrell@csiro.au        +61 8 8303 8664         12/02/2021 ################################
 
+#### senani.karunaratne@csiro.au                                     ################################
+
 #####################################################################################################
 
 #### Set working directory ####
@@ -13,6 +15,7 @@ setwd("/Users/markfarrell/OneDrive - CSIRO/Data/PeakPicking")
 #### Install packages as needed ####
 install.packages("zoo")
 install.packages("DescTools")
+install.packages("ggpmisc")
 
 
 #### Load packages ####
@@ -22,6 +25,7 @@ library(janitor)
 library(zoo)
 library(pracma)
 library(DescTools)
+library(ggpmisc)
 
 #### import data ####
 n_raw <- read_csv("data/tn.csv")
@@ -155,7 +159,52 @@ AUC(trima$n, trima$y.smooth, method = "spline")
 # to new dfs named by the function
 
 # We'd then write another function that punts that list of dfs into the AUC command
-peaks_sorta <- peaks_sort %>% slice(1)
+#peaks_sorta <- peaks_sort %>% slice(1)
 
-trima <- merged %>% slice(peaks_sorta$X3:peaks_sorta$X4)
+#trima <- merged %>% slice(peaks_sorta$X3:peaks_sorta$X4)
+
+## Create a sequence
+index <- seq(1:dim(peaks)[1])
+
+peaks_a <- cbind(index, peaks)
+head(peaks_a)
+tail(peaks_a)
+head(n_raw)
+
+## Empty data frame
+results <- NULL 
+
+## Run through the index 
+for(i in seq_along(peaks_a$index)){
+  index <- i
+  min <- peaks_a[i,4]
+  max <- peaks_a[i,5]
+  temp <- dplyr::filter(n_raw, time >= min & time <= max)
+  area <- AUC(temp$time, temp$y.smooth, method = "spline")
+  print(area)
+  results_temp <- data.frame("index"=index, "Area_f"=area)
+  results <- rbind(results,results_temp)
+}
+
+
+## Merge with returned Peak info
+conc <- read_csv("data/concs.csv")
+final <- dplyr::left_join(peaks_a, results, by='index') %>% 
+  arrange(X3) %>% 
+  cbind(conc)
+head(final)
+
+## plot
+
+my.formula <- y ~ x
+
+ggplot(final, aes(conc, Area_f)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = TRUE, formula = my.formula) +
+  stat_poly_eq(formula = my.formula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE)
+
+## Save results
+write_csv(final, "outputs/Results.csv")
 
