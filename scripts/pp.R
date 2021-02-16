@@ -27,6 +27,7 @@ library(pracma)
 library(DescTools)
 library(ggpmisc)
 
+#### TN ####
 #### import data ####
 n_raw <- read_csv("data/tn.csv")
 plot(n_raw, col = 'Gray', type = 'l')
@@ -207,4 +208,118 @@ ggplot(final, aes(conc, Area_f)) +
 
 ## Save results
 write_csv(final, "outputs/Results.csv")
+
+
+#### TC ####
+#### import data ####
+c_raw <- read_csv("data/tc.csv")
+plot(c_raw, col = 'Gray', type = 'l')
+
+#### fix baseline ####
+c_raw$b <- c_raw$conc + abs(min(c_raw$conc))
+
+
+#### smooth ####
+c_raw$y.smooth <- loess(c_raw$b ~ c_raw$time, span=0.012)$fitted
+plot(c_raw$time, c_raw$y.smooth, type = 'l')
+
+
+#### go pracma ####
+#Uses {pracma::findpeaks} to identify peaks
+
+peaks <- data.frame(findpeaks(c_raw$y.smooth, 
+                              npeaks=30, 
+                              threshold=0, 
+                              peakpat = "[+]{1,}[0]*[-]{1,}", 
+                              sortstr=TRUE)) #IDs peaks and makes a df that has
+#                                            # X1 = height at point of picking
+#                                            # X2 = time at point of picking
+#                                            # X3 = time at start of peak
+#                                            # X4 = time at end of peak
+
+c_raw$n <- seq(1,length(c_raw$y.smooth))
+
+# sort peaks df
+peaks_sort <- peaks %>% 
+  arrange(X2)
+
+#generate peak number vector and combine with sorted peaks df
+peak_no <- 1:30
+peaks_sort <- cbind(peak_no, peaks_sort)
+
+merged <- merge(x=c_raw, 
+                y=peaks_sort, 
+                by.x="n", 
+                by.y="X2", 
+                all.x=TRUE, 
+                all.y=TRUE)
+
+ggplot(merged, aes(x=time, y=conc)) +
+  geom_col(orientation="x", colour = "grey") +
+  geom_line(aes(x=time, y=y.smooth))+
+  geom_point(aes(x=time, y=X1), colour = "red")
+
+
+#### cut early washes ####
+trim <- merged %>% slice(16731:49621)
+
+ggplot(trim, aes(x=time, y=conc)) +
+  geom_col(orientation="x", colour = "grey", fill = "grey") +
+  geom_line(aes(x=time, y=y.smooth))+
+  geom_point(aes(x=time, y=X1), colour = "red", size = 6)
+
+AUC(trima$n, trima$y.smooth, method = "spline")
+
+
+#### Glue it all together ####
+
+
+## Create a sequence
+peaks_trim <- peaks_sort %>% slice(8:30)
+
+index <- seq(1:dim(peaks_trim)[1])
+
+peaks_a <- cbind(index, peaks_trim)
+head(peaks_a)
+tail(peaks_a)
+head(c_raw)
+
+## Empty data frame
+results <- NULL 
+
+## Run through the index 
+for(i in seq_along(peaks_a$index)){
+  index <- i
+  min <- peaks_a[i,4]
+  max <- peaks_a[i,5]
+  temp <- dplyr::filter(c_raw, time >= min & time <= max)
+  area <- AUC(temp$time, temp$y.smooth, method = "spline")
+  print(area)
+  results_temp <- data.frame("index"=index, "Area_f"=area)
+  results <- rbind(results,results_temp)
+}
+
+
+## Merge with returned Peak info
+conc <- read_csv("data/concs.csv")
+final <- dplyr::left_join(peaks_a, results, by='index') %>% 
+  arrange(X3) %>% 
+  cbind(conc)
+head(final)
+
+## plot
+
+my.formula <- y ~ x
+
+ggplot(final, aes(conc, Area_f)) +
+  geom_point() +
+  stat_smooth(method = "lm", se = TRUE, formula = my.formula) +
+  stat_poly_eq(formula = my.formula, 
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+               parse = TRUE)
+
+## Save results
+write_csv(final, "outputs/Results.csv")
+
+
 
