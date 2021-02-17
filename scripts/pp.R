@@ -290,8 +290,8 @@ results <- NULL
 ## Run through the index 
 for(i in seq_along(peaks_a$index)){
   index <- i
-  min <- peaks_a[i,4]
-  max <- peaks_a[i,5]
+  min <- peaks_a[i,5]
+  max <- peaks_a[i,6]
   temp <- dplyr::filter(c_raw, time >= min & time <= max)
   area <- AUC(temp$time, temp$y.smooth, method = "spline")
   print(area)
@@ -301,7 +301,7 @@ for(i in seq_along(peaks_a$index)){
 
 
 ## Merge with returned Peak info
-conc <- read_csv("data/concs.csv")
+conc <- read_csv("data/concsc.csv")
 final <- dplyr::left_join(peaks_a, results, by='index') %>% 
   arrange(X3) %>% 
   cbind(conc)
@@ -319,7 +319,7 @@ ggplot(final, aes(conc, Area_f)) +
                parse = TRUE)
 
 ## Save results
-write_csv(final, "outputs/Results.csv")
+write_csv(final, "outputs/CResults.csv")
 
 
 
